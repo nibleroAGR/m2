@@ -18,6 +18,9 @@
     <script src="app.js" defer></script>
     <!-- Lógica del Editor de texto (Normal) -->
     <script src="editor.js" defer></script>
+    
+    <!-- Librería para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -91,6 +94,7 @@
                 <div class="editor-actions">
                     <span id="save-status" class="text-muted text-sm"><i class="fa-solid fa-cloud"></i> Autoguardado 10min</span>
                     <button id="btn-save" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+                    <button id="btn-export-pdf" class="btn btn-success btn-sm" disabled><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
                 </div>
             </header>
             

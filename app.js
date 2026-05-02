@@ -29,6 +29,7 @@ const scriptListEl = document.getElementById('script-list');
 const editorEl = document.getElementById('editor');
 const scriptTitleEl = document.getElementById('script-title');
 const btnSave = document.getElementById('btn-save');
+const btnExportPdf = document.getElementById('btn-export-pdf');
 const saveStatus = document.getElementById('save-status');
 
 // ==================== AUTHENTICATION ====================
@@ -142,6 +143,7 @@ function openScript(id, data) {
     scriptTitleEl.value = data.title || '';
     scriptTitleEl.disabled = false;
     btnSave.disabled = false;
+    btnExportPdf.disabled = false;
     
     // Resaltar el activo en la lista
     document.querySelectorAll('.script-item').forEach(item => item.classList.remove('active'));
@@ -161,6 +163,7 @@ function resetEditor() {
     scriptTitleEl.value = '';
     scriptTitleEl.disabled = true;
     btnSave.disabled = true;
+    btnExportPdf.disabled = true;
     stopAutoSave();
 }
 
@@ -193,6 +196,51 @@ async function saveScript() {
 btnSave.addEventListener('click', () => {
     saveScript();
     showToast('Guion guardado manualmente', 'success');
+});
+
+// Botón Exportar PDF
+btnExportPdf.addEventListener('click', () => {
+    if (!currentScriptId) return;
+
+    // Crear clon para exportación limpia sin elementos UI
+    const clone = editorEl.cloneNode(true);
+    clone.style.background = "white";
+    clone.style.padding = "0"; 
+    clone.style.paddingLeft = "0.5in"; // Margen izquierdo adicional (1" base + 0.5" = 1.5")
+    clone.style.boxShadow = "none";
+    clone.style.backgroundImage = "none"; // Quitar lineas separadoras de pagina
+    clone.style.width = "6.5in"; // Ancho total imprimible en Letter (8.5 - 1 - 1)
+
+    const container = document.createElement('div');
+    container.appendChild(clone);
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    document.body.appendChild(container);
+
+    const title = scriptTitleEl.value || 'Guion';
+    
+    btnExportPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
+    btnExportPdf.disabled = true;
+
+    const opt = {
+        margin:       1, // 1 pulgada en todos los bordes (Top, Right, Bottom, Left)
+        filename:     `${title}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(container).save().then(() => {
+        document.body.removeChild(container);
+        btnExportPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Exportar PDF';
+        btnExportPdf.disabled = false;
+        showToast('PDF Exportado correctamente', 'success');
+    }).catch(e => {
+        document.body.removeChild(container);
+        btnExportPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Exportar PDF';
+        btnExportPdf.disabled = false;
+        showToast('Error al exportar PDF', 'error');
+    });
 });
 
 // Autoguardado cada 10 min

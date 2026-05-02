@@ -2,36 +2,36 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>eWriter Pro</title>
-    <!-- Premium Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Courier+Prime&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Profesional</title>
+    
+    <!-- Premium Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Icons (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Lógica y Firebase (Compat para poder abrir en local) -->
+
+    <!-- Firebase Compat Libraries (Funciona abriendo el archivo localmente sin servidor) -->
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
     
-    <script src="app.js" defer></script>
-    <!-- Lógica del Editor de texto (Normal) -->
-    <script src="editor.js" defer></script>
-    
-    <!-- Librería para exportar a PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 
-    <!-- Pantalla de Login -->
+    <!-- PANTALLA DE LOGIN -->
     <div id="login-section" class="auth-wrapper">
-        <div class="auth-panel glass-panel">
+        <div class="glass-panel auth-panel">
             <div class="logo">
-                <i class="fa-solid fa-feather-pointed"></i>
-                <h2>eWriter Pro</h2>
+                <i class="fa-solid fa-chart-pie"></i>
+                <h2>CRM System</h2>
             </div>
-            <p class="subtitle">Tu estudio de guiones en la nube</p>
+            <p class="subtitle">Accede a tu zona de trabajo</p>
 
             <form id="login-form">
                 <div class="input-group">
@@ -44,70 +44,249 @@
                 </div>
                 <div id="auth-error" class="error-message"></div>
                 
-                <button type="submit" class="btn btn-primary w-100">Iniciar Sesión / Registrarse</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Iniciar Sesión</button>
             </form>
-            <p class="text-sm text-muted" style="text-align: center; margin-top:15px;">Si la cuenta no existe, se creará automáticamente.</p>
+
+            <div class="divider"><span>O</span></div>
+
+            <button class="btn btn-google" id="btn-google-login">
+                <i class="fa-brands fa-google"></i> Continuar con Google
+            </button>
         </div>
     </div>
 
-    <!-- Pantalla Principal de la App -->
-    <div id="app-section" class="hidden app-wrapper">
+    <!-- PANEL CRM (3 Columnas) -->
+    <div id="dashboard-section" class="dashboard-wrapper hidden">
         
-        <!-- Sidebar Izquierdo -->
-        <aside id="sidebar" class="glass-panel">
-            <div class="sidebar-header">
-                <div class="logo-small"><i class="fa-solid fa-feather-pointed"></i> eWriter</div>
+        <!-- Cabecera -->
+        <header class="topbar glass-panel">
+            <div class="logo-small"><i class="fa-solid fa-chart-pie"></i> CRM</div>
+            <div class="user-profile">
+                <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="verVista('vista-perfil')" title="Mi Perfil">
+                    <span id="user-name">Usuario</span>
+                    <div class="avatar" id="topbar-avatar"><i class="fa-solid fa-user"></i></div>
+                </div>
                 <button id="btn-logout" class="btn-icon" title="Cerrar sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
             </div>
-            
-            <div class="sidebar-section">
-                <h3>Tus Guiones</h3>
-                <button id="btn-new-script" class="btn btn-success w-100 mb-10"><i class="fa-solid fa-plus"></i> Nuevo Guion</button>
-                <div id="script-list" class="script-list">
-                    <!-- Cargado por JS -->
-                </div>
-            </div>
+        </header>
 
-            <hr class="divider-side">
-
-            <div class="sidebar-section">
-                <h3>Formato (Tab)</h3>
-                <button class="btn-style active" data-type="slugline" onclick="applyStyle('slugline')">Encabezado</button>
-                <button class="btn-style" data-type="action" onclick="applyStyle('action')">Acción</button>
-                <button class="btn-style" data-type="character" onclick="applyStyle('character')">Personaje</button>
-                <button class="btn-style" data-type="parenthetical" onclick="applyStyle('parenthetical')">Paréntesis</button>
-                <button class="btn-style" data-type="dialogue" onclick="applyStyle('dialogue')">Diálogo</button>
-                <button class="btn-style" data-type="transition" onclick="applyStyle('transition')">Transición</button>
-            </div>
+        <main class="main-layout">
             
-            <div class="shortcuts-info mt-auto">
-                <b>Atajos:</b><br>
-                • <kbd>Enter</kbd> Salto lógico<br>
-                • <kbd>Tab</kbd> Rotar estilos<br>
-            </div>
-        </aside>
+            <!-- Columna Izquierda: Menú -->
+            <aside class="col-left glass-panel">
+                <nav class="side-nav">
+                    <ul id="lista-modulos-dinamicos">
+                        <!-- Se llenará con JS (Fijos y Personalizados) -->
+                    </ul>
+                </nav>
 
-        <!-- Área Central de Trabajo -->
-        <main id="canvas-area">
-            <header class="editor-header glass-panel">
-                <input type="text" id="script-title" class="title-input" placeholder="Selecciona un guion para empezar..." disabled>
-                <div class="editor-actions">
-                    <span id="save-status" class="text-muted text-sm"><i class="fa-solid fa-cloud"></i> Autoguardado 10min</span>
-                    <button id="btn-save" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
-                    <button id="btn-export-pdf" class="btn btn-success btn-sm" disabled><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
+                <hr class="divider-side">
+                <nav class="side-nav mb-20">
+                    <div id="lista-enlaces-dinamicos" class="links-container">
+                        <!-- Se llenará con JS -->
+                    </div>
+                </nav>
+
+                <nav class="side-nav mt-auto">
+                    <ul>
+                        <li onclick="verVista('vista-ajustes')">
+                            <a href="#"><i class="fa-solid fa-gear"></i> Módulos</a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Columna Central: Contenido Principal -->
+            <section class="col-center">
+                
+                <!-- Vista Tareas -->
+                <div id="vista-tareas" class="vista-modulo">
+                    <h2><i class="fa-solid fa-list-check"></i> Tareas Diarias</h2>
+                    <p class="text-muted mb-20">Añade tareas recurrentes para tu día a día.</p>
+                    <form id="form-tarea" class="glass-panel p-20 mb-20 flex-row">
+                        <input type="text" id="tarea-nombre" class="input-estilo flex-1" placeholder="Nombre de tarea" required>
+                        <input type="time" id="tarea-hora" class="input-estilo" required>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </form>
+                    <div id="contenedor-tareas" class="listado"></div>
                 </div>
-            </header>
-            
-            <div class="editor-container">
-                <div id="editor" contenteditable="false" spellcheck="false">
-                    <div style="text-align: center; color: #999; margin-top: 50px; font-family: sans-serif;">⬅️ Selecciona o crea un guion en el menú lateral.</div>
+
+                <!-- Vista Programadas -->
+                <div id="vista-programadas" class="vista-modulo hidden">
+                    <h2><i class="fa-regular fa-calendar-days"></i> Tareas Programadas</h2>
+                    <p class="text-muted mb-20">Añade tareas de un solo uso para una fecha.</p>
+                    <form id="form-programada" class="glass-panel p-20 mb-20 flex-row">
+                        <input type="text" id="prog-nombre" class="input-estilo flex-1" placeholder="Nombre del evento" required>
+                        <input type="date" id="prog-fecha" class="input-estilo" required>
+                        <input type="time" id="prog-hora" class="input-estilo" required>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </form>
+                    <div id="contenedor-programadas" class="listado"></div>
                 </div>
-            </div>
+
+                <!-- Vista Historial -->
+                <div id="vista-historial" class="vista-modulo hidden">
+                    <h2><i class="fa-solid fa-clock-rotate-left"></i> Historial</h2>
+                    <p class="text-muted mb-20">Registro de tareas completadas.</p>
+                    <div id="contenedor-historial" class="listado"></div>
+                </div>
+
+                <!-- Vista Enlaces -->
+                <div id="vista-enlaces" class="vista-modulo hidden">
+                    <h2><i class="fa-solid fa-link"></i> Enlaces Externos</h2>
+                    <p class="text-muted mb-20">Añade enlaces rápidos al menú izquierdo.</p>
+                    <form id="form-enlace" class="glass-panel p-20 mb-20 flex-row">
+                        <input type="text" id="enlace-nombre" class="input-estilo flex-1" placeholder="Nombre del enlace" required>
+                        <input type="url" id="enlace-url" class="input-estilo flex-2" placeholder="https://..." required>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </form>
+                    <div id="contenedor-enlaces" class="listado"></div>
+                </div>
+
+                <!-- Vista Ajustes (Módulos) -->
+                <div id="vista-ajustes" class="vista-modulo hidden">
+                    <h2><i class="fa-solid fa-gear"></i> Gestión de Módulos</h2>
+                    <p class="text-muted mb-20">Crea módulos personalizados (iframes) con iconos.</p>
+                    <form id="form-modulo" class="glass-panel p-20 mb-20 flex-row">
+                        <div class="icon-picker-container" style="position: relative; flex: 0.8; min-width: 180px;">
+                            <div class="input-estilo" style="cursor: pointer; display: flex; align-items: center; gap: 10px;" id="btn-icon-picker">
+                                <i id="selected-icon-preview" class="fa-solid fa-icons" style="color:var(--text-secondary); font-size:1.1rem;"></i>
+                                <span id="selected-icon-text" style="color:var(--text-secondary);">Icono...</span>
+                            </div>
+                            <div id="icon-dropdown" class="glass-panel hidden" style="position: absolute; top: 110%; left: 0; width: 280px; z-index: 50; padding: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                                <input type="text" id="search-icon" class="input-estilo mb-10" placeholder="Buscar icono... (ej. user)">
+                                <div id="icon-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-height: 180px; overflow-y: auto; padding-right:5px;">
+                                    <!-- Se llenará con JS -->
+                                </div>
+                                <div class="mt-10 text-center">
+                                    <a href="https://fontawesome.com/search?q=&o=r&m=free" target="_blank" class="text-sm" style="color:var(--accent-primary); text-decoration:none;"><i class="fa-solid fa-arrow-up-right-from-square"></i> Ver todos en FontAwesome</a>
+                                </div>
+                            </div>
+                            <input type="hidden" id="modulo-icono" value="fa-solid fa-icons" required>
+                        </div>
+                        <input type="text" id="modulo-nombre" class="input-estilo flex-1" placeholder="Nombre módulo" required>
+                        <input type="url" id="modulo-url" class="input-estilo flex-2" placeholder="https://mi-herramienta.com" required>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Añadir</button>
+                    </form>
+                    <div id="contenedor-modulos" class="grid-modulos"></div>
+                </div>
+
+                <!-- Vista Iframe Módulo -->
+                <div id="vista-iframe" class="vista-modulo hidden iframe-contenedor">
+                    <iframe id="iframe-app" src="" frameborder="0" allowfullscreen></iframe>
+                </div>
+
+                <!-- Vista Perfil de Usuario -->
+                <div id="vista-perfil" class="vista-modulo hidden">
+                    <h2><i class="fa-solid fa-id-card"></i> Mi Perfil</h2>
+                    <p class="text-muted mb-20">Gestiona tus datos personales y credenciales de acceso.</p>
+                    
+                    <div class="perfil-layout">
+                        <!-- Datos Personales -->
+                        <form id="form-perfil" class="glass-panel p-20 perfil-seccion">
+                            <h3 class="mb-20" style="border-bottom:1px solid var(--card-border); padding-bottom:10px;"><i class="fa-solid fa-user-pen"></i> Datos Personales</h3>
+                            
+                            <div class="avatar-upload-container mb-20">
+                                <div class="avatar-large" id="perfil-avatar-preview">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div class="avatar-actions">
+                                    <label class="btn btn-sm btn-primary" style="cursor:pointer;">
+                                        <i class="fa-solid fa-upload"></i> Subir Foto
+                                        <input type="file" id="perfil-foto-input" accept="image/png, image/jpeg" class="hidden">
+                                    </label>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarFotoPerfil()"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="mb-10">
+                                <label class="text-sm text-muted">Nombre completo</label>
+                                <input type="text" id="perfil-nombre" class="input-estilo" placeholder="Ej. Juan Pérez" required>
+                            </div>
+                            
+                            <div class="flex-row mb-10" style="gap:10px;">
+                                <div class="flex-1">
+                                    <label class="text-sm text-muted">Teléfono</label>
+                                    <input type="tel" id="perfil-telefono" class="input-estilo" placeholder="Ej. 600 000 000">
+                                </div>
+                                <div style="width:120px;">
+                                    <label class="text-sm text-muted">Ext.</label>
+                                    <input type="text" id="perfil-ext" class="input-estilo" placeholder="Ej. 101">
+                                </div>
+                            </div>
+
+                            <div class="mb-20">
+                                <label class="text-sm text-muted">Presentación</label>
+                                <textarea id="perfil-presentacion" class="input-estilo w-100" rows="3" placeholder="Una pequeña presentación sobre tu rol..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> Guardar Perfil</button>
+                        </form>
+
+                        <!-- Seguridad -->
+                        <form id="form-password" class="glass-panel p-20 perfil-seccion">
+                            <h3 class="mb-20 text-danger" style="border-bottom:1px solid var(--card-border); padding-bottom:10px;"><i class="fa-solid fa-shield-halved"></i> Seguridad</h3>
+                            <p class="text-sm text-muted mb-20">Cambia tu contraseña de acceso.</p>
+
+                            <div class="mb-10">
+                                <label class="text-sm text-muted">Nueva contraseña</label>
+                                <input type="password" id="perfil-pass-new" class="input-estilo" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                            </div>
+                            <div class="mb-20">
+                                <label class="text-sm text-muted">Confirmar contraseña</label>
+                                <input type="password" id="perfil-pass-confirm" class="input-estilo" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                            </div>
+
+                            <button type="submit" class="btn btn-danger"><i class="fa-solid fa-key"></i> Actualizar Contraseña</button>
+                        </form>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Columna Derecha: Agenda -->
+            <aside class="col-right glass-panel">
+                <h3 style="margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                    <i class="fa-regular fa-calendar"></i> Agenda
+                </h3>
+                <div id="agenda-contenedor" class="agenda">
+                    <!-- Se llena con JS -->
+                </div>
+            </aside>
+
         </main>
     </div>
 
-    <!-- Sistema de Notificaciones -->
+    <!-- MODAL DE ACCIÓN (Para la Agenda) -->
+    <div id="modal-tarea" class="modal-fondo hidden">
+        <div class="modal-caja glass-panel">
+            <h3 id="modal-titulo" class="mb-20">Detalle</h3>
+            <div id="modal-historial-obs" class="historial-obs mb-20"></div>
+            <textarea id="modal-observacion" class="input-estilo w-100 mb-20" rows="3" placeholder="Añadir observación..."></textarea>
+            
+            <div class="flex-row">
+                <button class="btn btn-success flex-1" onclick="concluirTarea()">Concluir Tarea</button>
+                <button class="btn btn-warning flex-1" onclick="mostrarReprogramar()">Reprogramar</button>
+                <button class="btn btn-danger" onclick="cerrarModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="zona-reprogramar" class="hidden mt-20 p-20" style="background:rgba(0,0,0,0.3); border-radius:8px;">
+                <p class="text-sm mb-10">Nueva fecha y hora:</p>
+                <div class="flex-row">
+                    <input type="date" id="repro-fecha" class="input-estilo">
+                    <input type="time" id="repro-hora" class="input-estilo">
+                    <button class="btn btn-primary" onclick="guardarReprogramacion()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
     <div id="toast-container" class="toast-container"></div>
 
+    <div class="version-badge">v1.0.0</div>
+
+    <!-- Custom JS (Normal script, no module!) -->
+    <script src="app.js"></script>
 </body>
 </html>

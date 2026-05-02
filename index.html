@@ -2,249 +2,108 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Inmuebles - Cloud</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --card: #ffffff;
-        }
-
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #334155; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: var(--card); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
-        
-        input, select, button { width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 1rem; }
-        button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        button:hover { background: #1d4ed8; opacity: 0.9; }
-        .btn-secondary { background: #64748b; }
-        
-        .hidden { display: none; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-        
-        .zone-card { background: white; padding: 20px; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-        .zone-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-
-        .room-item { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
-        
-        /* Estilo del Croquis */
-        .croquis-container {
-            background: #f1f5f9;
-            border: 2px dashed #94a3b8;
-            margin: 15px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-        .croquis-label { font-size: 12px; color: #475569; font-weight: bold; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .total-badge { background: #dcfce7; color: #166534; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
-    </style>
+    <title>eWriter Pro</title>
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Courier+Prime&display=swap" rel="stylesheet">
+    <!-- Icons (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Lógica y Firebase (Compat para poder abrir en local) -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    
+    <script src="app.js" defer></script>
+    <!-- Lógica del Editor de texto (Normal) -->
+    <script src="editor.js" defer></script>
 </head>
 <body>
 
-<div class="container">
-    
-    <section id="auth-section" class="card">
-        <h2>Acceso al Gestor</h2>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Contraseña">
-        <button id="btn-login">Entrar</button>
-        <button id="btn-register" class="btn-secondary">Crear Cuenta Nueva</button>
-    </section>
-
-    <section id="main-panel" class="hidden">
-        <header>
-            <h2>Mis Zonas</h2>
-            <button id="btn-logout" style="width: auto;" class="btn-secondary">Salir</button>
-        </header>
-        
-        <div class="card">
-            <h3>Nueva Zona</h3>
-            <input type="text" id="zone-name" placeholder="Nombre (ej. Piso en la Playa)">
-            <select id="zone-type">
-                <option value="casa">Casa</option>
-                <option value="local">Local</option>
-                <option value="terreno">Terreno</option>
-            </select>
-            <button id="btn-create-zone">Crear zona</button>
-        </div>
-
-        <div id="zones-list" class="grid"></div>
-    </section>
-
-    <section id="zone-detail" class="hidden">
-        <button onclick="window.location.reload()" style="width: auto;">← Volver</button>
-        <div class="card" style="margin-top: 20px;">
-            <h2 id="current-zone-title">Cargando...</h2>
-            <div class="total-badge">Total: <span id="total-meters">0</span> m²</div>
-            
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-            
-            <h4>Añadir Habitación</h4>
-            <input type="text" id="room-name" placeholder="Nombre (Salón, Cocina...)">
-            <div style="display: flex; gap: 10px;">
-                <input type="number" id="room-width" placeholder="Ancho (m)">
-                <input type="number" id="room-length" placeholder="Largo (m)">
+    <!-- Pantalla de Login -->
+    <div id="login-section" class="auth-wrapper">
+        <div class="auth-panel glass-panel">
+            <div class="logo">
+                <i class="fa-solid fa-feather-pointed"></i>
+                <h2>eWriter Pro</h2>
             </div>
-            <button id="btn-add-room">Guardar Habitación</button>
+            <p class="subtitle">Tu estudio de guiones en la nube</p>
+
+            <form id="login-form">
+                <div class="input-group">
+                    <i class="fa-solid fa-envelope"></i>
+                    <input type="email" id="email" class="input-estilo" placeholder="Correo electrónico" required>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="password" class="input-estilo" placeholder="Contraseña" required>
+                </div>
+                <div id="auth-error" class="error-message"></div>
+                
+                <button type="submit" class="btn btn-primary w-100">Iniciar Sesión / Registrarse</button>
+            </form>
+            <p class="text-sm text-muted" style="text-align: center; margin-top:15px;">Si la cuenta no existe, se creará automáticamente.</p>
         </div>
+    </div>
 
-        <div id="rooms-container" style="margin-top: 20px;"></div>
-    </section>
-
-</div>
-
-<script type="module">
-    // --- IMPORTACIÓN DE FIREBASE ---
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // --- TU CONFIGURACIÓN ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyD0HVBIo7ofBPpGW5g-lFTO8g3pft_qwBE",
-        authDomain: "dietteam-d51ea.firebaseapp.com",
-        projectId: "dietteam-d51ea",
-        storageBucket: "dietteam-d51ea.firebasestorage.app",
-        messagingSenderId: "113448905720",
-        appId: "1:113448905720:web:8adc774a777284d0e7040d"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let userGlobal = null;
-    let zoneActiveId = null;
-
-    // --- LÓGICA DE NAVEGACIÓN ---
-    function showSection(id) {
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-panel').classList.add('hidden');
-        document.getElementById('zone-detail').classList.add('hidden');
-        document.getElementById(id).classList.remove('hidden');
-    }
-
-    // --- AUTENTICACIÓN ---
-    document.getElementById('btn-register').onclick = () => {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        createUserWithEmailAndPassword(auth, email, pass).catch(err => alert("Error: " + err.message));
-    };
-
-    document.getElementById('btn-login').onclick = () => {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        signInWithEmailAndPassword(auth, email, pass).catch(err => alert("Acceso denegado"));
-    };
-
-    document.getElementById('btn-logout').onclick = () => signOut(auth);
-
-    onAuthStateChanged(auth, user => {
-        if (user) {
-            userGlobal = user;
-            showSection('main-panel');
-            loadZones();
-        } else {
-            showSection('auth-section');
-        }
-    });
-
-    // --- GESTIÓN DE ZONAS ---
-    document.getElementById('btn-create-zone').onclick = async () => {
-        const name = document.getElementById('zone-name').value;
-        const type = document.getElementById('zone-type').value;
-        if (!name) return alert("Escribe un nombre");
-
-        await addDoc(collection(db, "zonas"), {
-            uid: userGlobal.uid,
-            nombre: name,
-            tipo: type,
-            creado: Date.now()
-        });
-        document.getElementById('zone-name').value = "";
-    };
-
-    function loadZones() {
-        const q = query(collection(db, "zonas"), where("uid", "==", userGlobal.uid));
-        onSnapshot(q, (snapshot) => {
-            const list = document.getElementById('zones-list');
-            list.innerHTML = '';
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                const div = document.createElement('div');
-                div.className = 'zone-card';
-                div.innerHTML = `<strong>${data.nombre}</strong><br><small>${data.tipo.toUpperCase()}</small>`;
-                div.onclick = () => openZone(doc.id, data.nombre);
-                list.appendChild(div);
-            });
-        });
-    }
-
-    // --- GESTIÓN DE HABITACIONES ---
-    function openZone(id, name) {
-        zoneActiveId = id;
-        document.getElementById('current-zone-title').innerText = name;
-        showSection('zone-detail');
-        loadRooms(id);
-    }
-
-    document.getElementById('btn-add-room').onclick = async () => {
-        const name = document.getElementById('room-name').value;
-        const w = parseFloat(document.getElementById('room-width').value);
-        const l = parseFloat(document.getElementById('room-length').value);
-
-        if (!name || isNaN(w) || isNaN(l)) return alert("Completa los datos");
-
-        await addDoc(collection(db, `zonas/${zoneActiveId}/habitaciones`), {
-            nombre: name,
-            ancho: w,
-            largo: l,
-            m2: w * l,
-            creado: Date.now()
-        });
+    <!-- Pantalla Principal de la App -->
+    <div id="app-section" class="hidden app-wrapper">
         
-        document.getElementById('room-name').value = "";
-        document.getElementById('room-width').value = "";
-        document.getElementById('room-length').value = "";
-    };
+        <!-- Sidebar Izquierdo -->
+        <aside id="sidebar" class="glass-panel">
+            <div class="sidebar-header">
+                <div class="logo-small"><i class="fa-solid fa-feather-pointed"></i> eWriter</div>
+                <button id="btn-logout" class="btn-icon" title="Cerrar sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Tus Guiones</h3>
+                <button id="btn-new-script" class="btn btn-success w-100 mb-10"><i class="fa-solid fa-plus"></i> Nuevo Guion</button>
+                <div id="script-list" class="script-list">
+                    <!-- Cargado por JS -->
+                </div>
+            </div>
 
-    function loadRooms(zoneId) {
-        onSnapshot(collection(db, `zonas/${zoneId}/habitaciones`), (snapshot) => {
-            const container = document.getElementById('rooms-container');
-            const totalLabel = document.getElementById('total-meters');
-            container.innerHTML = '';
-            let suma = 0;
+            <hr class="divider-side">
 
-            snapshot.forEach(doc => {
-                const room = doc.data();
-                suma += room.m2;
+            <div class="sidebar-section">
+                <h3>Formato (Tab)</h3>
+                <button class="btn-style active" data-type="slugline" onclick="applyStyle('slugline')">Encabezado</button>
+                <button class="btn-style" data-type="action" onclick="applyStyle('action')">Acción</button>
+                <button class="btn-style" data-type="character" onclick="applyStyle('character')">Personaje</button>
+                <button class="btn-style" data-type="parenthetical" onclick="applyStyle('parenthetical')">Paréntesis</button>
+                <button class="btn-style" data-type="dialogue" onclick="applyStyle('dialogue')">Diálogo</button>
+                <button class="btn-style" data-type="transition" onclick="applyStyle('transition')">Transición</button>
+            </div>
+            
+            <div class="shortcuts-info mt-auto">
+                <b>Atajos:</b><br>
+                • <kbd>Enter</kbd> Salto lógico<br>
+                • <kbd>Tab</kbd> Rotar estilos<br>
+            </div>
+        </aside>
 
-                // Escala para el croquis (1 metro = 30px)
-                const escala = 30;
+        <!-- Área Central de Trabajo -->
+        <main id="canvas-area">
+            <header class="editor-header glass-panel">
+                <input type="text" id="script-title" class="title-input" placeholder="Selecciona un guion para empezar..." disabled>
+                <div class="editor-actions">
+                    <span id="save-status" class="text-muted text-sm"><i class="fa-solid fa-cloud"></i> Autoguardado 10min</span>
+                    <button id="btn-save" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
+                </div>
+            </header>
+            
+            <div class="editor-container">
+                <div id="editor" contenteditable="false" spellcheck="false">
+                    <div style="text-align: center; color: #999; margin-top: 50px; font-family: sans-serif;">⬅️ Selecciona o crea un guion en el menú lateral.</div>
+                </div>
+            </div>
+        </main>
+    </div>
 
-                const div = document.createElement('div');
-                div.className = 'room-item';
-                div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>${room.nombre}</strong>
-                        <span>${room.m2.toFixed(2)} m²</span>
-                    </div>
-                    <div class="croquis-container" style="width:${room.ancho * escala}px; height:${room.largo * escala}px">
-                        <span class="croquis-label">${room.ancho}m x ${room.largo}m</span>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-            totalLabel.innerText = suma.toFixed(2);
-        });
-    }
-</script>
+    <!-- Sistema de Notificaciones -->
+    <div id="toast-container" class="toast-container"></div>
 
 </body>
 </html>

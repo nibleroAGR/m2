@@ -182,10 +182,26 @@ function createFolderElement(folder) {
                 <i class="fa-solid fa-folder"></i> 
                 <span>${folder.name}</span>
             </div>
-            <i class="fa-solid fa-chevron-down" style="font-size:0.7rem; color:#94a3b8;"></i>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <i class="fa-solid fa-trash btn-delete-folder" style="font-size:0.75rem; color:#ef4444;" title="Borrar carpeta"></i>
+                <i class="fa-solid fa-chevron-down" style="font-size:0.7rem; color:#94a3b8;"></i>
+            </div>
         </div>
         <div class="folder-content" id="folder-content-${folder.id}"></div>
     `;
+
+    // Borrar carpeta
+    div.querySelector('.btn-delete-folder').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if(confirm('¿Eliminar esta carpeta de seguridad y todas las copias en su interior? No se puede deshacer.')) {
+            const scriptsInFolder = allScripts.filter(s => s.folderId === folder.id);
+            for(let s of scriptsInFolder) {
+                await db.doc(`users/${currentUser.uid}/scripts/${s.id}`).delete();
+            }
+            await db.doc(`users/${currentUser.uid}/folders/${folder.id}`).delete();
+            showToast('Carpeta de seguridad eliminada', 'info');
+        }
+    });
 
     // Dropzone logic
     div.addEventListener('dragover', (e) => {

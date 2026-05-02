@@ -95,3 +95,52 @@ function updateActiveButton(className) {
         }
     });
 }
+
+// ==================== ESTADÍSTICAS ====================
+function updateStats() {
+    if(editor.contentEditable === "false") {
+        document.getElementById('stat-pages').textContent = "0";
+        document.getElementById('stat-scenes').textContent = "0";
+        document.getElementById('stat-chars').textContent = "0";
+        return;
+    }
+
+    // 1. Escenas
+    const scenes = editor.querySelectorAll('.slugline').length;
+    document.getElementById('stat-scenes').textContent = scenes;
+
+    // 2. Personajes
+    const charElements = editor.querySelectorAll('.character');
+    const uniqueChars = new Set();
+    charElements.forEach(el => {
+        let name = el.textContent.trim().toUpperCase();
+        // Limpiar " (CONT'D)" o " (V.O.)" para agrupar el mismo personaje
+        name = name.replace(/\s*\(.*?\)/g, '').trim();
+        if (name) uniqueChars.add(name);
+    });
+    document.getElementById('stat-chars').textContent = uniqueChars.size;
+
+    // 3. Páginas
+    // Altura de una hoja US Letter en CSS es 11 pulgadas = 11 * 96px = 1056px.
+    // Usaremos scrollHeight para calcular cuántas páginas abarca el texto.
+    const pageHeight = 1056; 
+    let pages = Math.max(1, Math.ceil(editor.scrollHeight / pageHeight));
+    
+    document.getElementById('stat-pages').textContent = pages;
+}
+
+// Observar cambios en el contenido del editor para actualizar estadísticas en tiempo real
+const observer = new MutationObserver(() => {
+    // Usamos setTimeout o un debounce simple si queremos mejor rendimiento,
+    // pero para un editor de texto suele ser lo suficientemente rápido.
+    updateStats();
+});
+
+observer.observe(editor, {
+    childList: true,
+    subtree: true,
+    characterData: true
+});
+
+// Exponer globalmente para poder llamarla desde app.js al cargar un guion
+window.updateStats = updateStats;

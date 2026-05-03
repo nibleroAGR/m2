@@ -89,29 +89,45 @@
                 <input type="text" id="script-title" class="title-input" placeholder="Selecciona un guion para empezar..." disabled>
                 <div class="editor-actions">
                     <span id="save-status" class="text-muted text-sm"><i class="fa-solid fa-cloud"></i> Autoguardado 10min</span>
-                    
-                    <input type="file" id="file-import" accept=".pdf,.txt" style="display:none;">
-                    <button id="btn-import" class="btn btn-secondary btn-sm" title="Abrir guion"><i class="fa-solid fa-folder-open"></i> Abrir</button>
-                    
-                    <button id="btn-backup" class="btn btn-secondary btn-sm" disabled title="Hacer Copia de Seguridad"><i class="fa-solid fa-copy"></i> Respaldar</button>
-                    
                     <button id="btn-save" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
                     <button id="btn-export-pdf" class="btn btn-success btn-sm" disabled><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
                 </div>
             </header>
             
             <div class="format-toolbar glass-panel">
-                <button class="btn-style active" data-type="slugline" onclick="applyStyle('slugline')">Encabezado</button>
-                <button class="btn-style" data-type="action" onclick="applyStyle('action')">Acción</button>
-                <button class="btn-style" data-type="character" onclick="applyStyle('character')">Personaje</button>
-                <button class="btn-style" data-type="parenthetical" onclick="applyStyle('parenthetical')">Paréntesis</button>
-                <button class="btn-style" data-type="dialogue" onclick="applyStyle('dialogue')">Diálogo</button>
-                <button class="btn-style" data-type="transition" onclick="applyStyle('transition')">Transición</button>
+                <div class="toolbar-group">
+                    <button class="btn-style active" data-type="slugline" onclick="applyStyle('slugline')">Encabezado</button>
+                    <button class="btn-style" data-type="action" onclick="applyStyle('action')">Acción</button>
+                    <button class="btn-style" data-type="character" onclick="applyStyle('character')">Personaje</button>
+                    <button class="btn-style" data-type="parenthetical" onclick="applyStyle('parenthetical')">Paréntesis</button>
+                    <button class="btn-style" data-type="dialogue" onclick="applyStyle('dialogue')">Diálogo</button>
+                    <button class="btn-style" data-type="transition" onclick="applyStyle('transition')">Transición</button>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <div class="toolbar-group">
+                    <button class="btn-icon" title="Negrita" onclick="document.execCommand('bold', false, null)"><i class="fa-solid fa-bold"></i></button>
+                    <button class="btn-icon" title="Cursiva" onclick="document.execCommand('italic', false, null)"><i class="fa-solid fa-italic"></i></button>
+                    <button class="btn-icon" title="Subrayado" onclick="document.execCommand('underline', false, null)"><i class="fa-solid fa-underline"></i></button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group">
+                    <select id="zoom-select" class="zoom-select">
+                        <option value="0.5">50%</option>
+                        <option value="0.75">75%</option>
+                        <option value="1" selected>100%</option>
+                        <option value="1.25">125%</option>
+                        <option value="1.5">150%</option>
+                    </select>
+                </div>
             </div>
 
-
-            <div class="editor-container">
-                <div id="editor" contenteditable="false" spellcheck="false">
+            <div id="pages-container" class="editor-container">
+                <!-- Pages will be dynamically created here -->
+                <div class="page" id="editor" contenteditable="false" spellcheck="false">
                     <div style="text-align: center; color: #999; margin-top: 50px; font-family: sans-serif;">⬅️ Selecciona o crea un guion en el menú lateral.</div>
                 </div>
             </div>

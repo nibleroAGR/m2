@@ -26,14 +26,11 @@ const appSection = document.getElementById('app-section');
 const loginForm = document.getElementById('login-form');
 const authError = document.getElementById('auth-error');
 const scriptListEl = document.getElementById('script-list');
-const editorEl = document.getElementById('editor');
+const pagesContainer = document.getElementById('pages-container');
 const scriptTitleEl = document.getElementById('script-title');
 const btnSave = document.getElementById('btn-save');
 const btnExportPdf = document.getElementById('btn-export-pdf');
 const saveStatus = document.getElementById('save-status');
-const btnBackup = document.getElementById('btn-backup');
-const btnImport = document.getElementById('btn-import');
-const fileImport = document.getElementById('file-import');
 
 // ==================== AUTHENTICATION ====================
 auth.onAuthStateChanged((user) => {
@@ -401,13 +398,23 @@ function openScript(id, data) {
     }
     
     currentScriptId = id;
-    editorEl.contentEditable = true;
-    editorEl.innerHTML = data.content || '';
+    
+    pagesContainer.innerHTML = '';
+    const firstPage = document.createElement('div');
+    firstPage.className = 'page';
+    firstPage.contentEditable = true;
+    firstPage.spellcheck = false;
+    firstPage.id = 'editor';
+    firstPage.innerHTML = data.content || '';
+    pagesContainer.appendChild(firstPage);
+    
+    if(window.reflowPagination) {
+        setTimeout(() => window.reflowPagination(firstPage), 50);
+    }
     scriptTitleEl.value = data.title || '';
     scriptTitleEl.disabled = false;
     btnSave.disabled = false;
     btnExportPdf.disabled = false;
-    if(btnBackup) btnBackup.disabled = false;
     
     // Resaltar el activo en la lista
     document.querySelectorAll('.script-item').forEach(item => item.classList.remove('active'));
@@ -423,13 +430,15 @@ function openScript(id, data) {
 
 function resetEditor() {
     currentScriptId = null;
-    editorEl.contentEditable = false;
-    editorEl.innerHTML = '<div style="text-align: center; color: #999; margin-top: 50px; font-family: sans-serif;">⬅️ Selecciona o crea un guion en el menú lateral.</div>';
+    pagesContainer.innerHTML = `
+        <div class="page" id="editor" contenteditable="false" spellcheck="false">
+            <div style="text-align: center; color: #999; margin-top: 50px; font-family: sans-serif;">⬅️ Selecciona o crea un guion en el menú lateral.</div>
+        </div>
+    `;
     scriptTitleEl.value = '';
     scriptTitleEl.disabled = true;
     btnSave.disabled = true;
     btnExportPdf.disabled = true;
-    if(btnBackup) btnBackup.disabled = true;
     stopAutoSave();
     if(window.updateStats) window.updateStats();
 }
@@ -437,7 +446,11 @@ function resetEditor() {
 async function saveScript() {
     if (!currentUser || !currentScriptId) return;
     
-    const content = editorEl.innerHTML;
+    let content = '';
+    pagesContainer.querySelectorAll('.page').forEach(page => {
+        content += page.innerHTML;
+    });
+    
     const title = scriptTitleEl.value || 'Sin Título';
     
     try {
@@ -474,48 +487,43 @@ btnExportPdf.addEventListener('click', () => {
 
     const title = scriptTitleEl.value || 'Guion';
     
-    // Restaurar viewport para que html2canvas no se desoriente
+    // Create a temporary element combining all pages
+    const exportDiv = document.createElement('div');
+    pagesContainer.querySelectorAll('.page').forEach(page => {
+        exportDiv.innerHTML += page.innerHTML;
+    });
+    
+    // Temporarily append to body to ensure styles are applied
+    exportDiv.style.position = 'absolute';
+    exportDiv.style.left = '-9999px';
+    exportDiv.style.width = '6.5in'; // Letter width (8.5) - 2in horizontal margins
+    exportDiv.style.fontFamily = "'Courier Prime', Courier, monospace";
+    exportDiv.style.fontSize = "12pt";
+    exportDiv.style.lineHeight = "12pt";
+    exportDiv.style.color = "#000";
+    document.body.appendChild(exportDiv);
+
     window.scrollTo(0, 0);
 
     const opt = {
-        margin:       1, // 1 pulgada en todos los bordes
+        margin:       1,
         filename:     `${title}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            scrollY: 0, 
-            useCORS: true,
-            // onclone permite modificar el DOM clonado ANTES de pintar el canvas sin romper la UI original
-            onclone: (clonedDoc) => {
-                const clonedEditor = clonedDoc.getElementById('editor');
-                if(clonedEditor) {
-                    clonedEditor.style.background = "white";
-                    clonedEditor.style.padding = "0"; 
-                    clonedEditor.style.paddingLeft = "0.5in"; // Margen extra
-                    clonedEditor.style.boxShadow = "none";
-                    clonedEditor.style.backgroundImage = "none"; 
-                    clonedEditor.style.width = "6.5in"; 
-                    clonedEditor.style.minHeight = "auto"; // Evitar forzar hojas largas vacías
-                }
-                
-                // Evitamos que html2canvas asuma un tamaño de pantalla cortado
-                clonedDoc.body.style.overflow = "visible";
-                clonedDoc.body.style.height = "auto";
-                clonedDoc.documentElement.style.overflow = "visible";
-                clonedDoc.documentElement.style.height = "auto";
-            }
-        },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(editorEl).save().then(() => {
+    html2pdf().set(opt).from(exportDiv).save().then(() => {
         btnExportPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Exportar PDF';
         btnExportPdf.disabled = false;
+        document.body.removeChild(exportDiv);
         showToast('PDF Exportado correctamente', 'success');
     }).catch(e => {
         console.error("Error al exportar PDF: ", e);
         btnExportPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Exportar PDF';
         btnExportPdf.disabled = false;
+        document.body.removeChild(exportDiv);
         showToast('Error al exportar PDF', 'error');
     });
 });
@@ -548,127 +556,4 @@ function showToast(message, type = 'info') {
         toast.classList.add('fade-out');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
-}
-
-// ==================== RESPALDAR (COPIA DE SEGURIDAD) ====================
-if(btnBackup) {
-    btnBackup.addEventListener('click', async () => {
-        if(!currentScriptId || !currentUser) return;
-        const content = editorEl.innerHTML;
-        const title = scriptTitleEl.value || 'Sin Título';
-        
-        try {
-            const newRef = db.collection(`users/${currentUser.uid}/scripts`);
-            await newRef.add({
-                title: `${title} (Respaldo)`,
-                content: content,
-                isArchived: true,
-                folderId: null,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            showToast('Copia de seguridad creada en el archivo', 'success');
-        } catch(e) {
-            console.error(e);
-            showToast('Error al crear copia', 'error');
-        }
-    });
-}
-
-// ==================== IMPORTAR (ABRIR) ====================
-if(btnImport && fileImport) {
-    btnImport.addEventListener('click', () => {
-        fileImport.click();
-    });
-
-    fileImport.addEventListener('change', async (e) => {
-        if(!currentUser) return;
-        const file = e.target.files[0];
-        if(!file) return;
-
-        btnImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando...';
-        btnImport.disabled = true;
-
-        try {
-            let textContent = '';
-            if(file.name.toLowerCase().endsWith('.pdf')) {
-                // Leer PDF
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-                for(let i=1; i<=pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContentObj = await page.getTextContent();
-                    let lastY = -1;
-                    for(let item of textContentObj.items) {
-                        if(lastY !== item.transform[5] && lastY !== -1) {
-                            textContent += '\n'; // salto de línea si cambia la Y
-                        }
-                        textContent += item.str;
-                        lastY = item.transform[5];
-                    }
-                    textContent += '\n\n';
-                }
-            } else {
-                // Leer TXT o Fountain
-                textContent = await file.text();
-            }
-
-            // Formateo Heurístico a HTML
-            const htmlContent = parseTextToHTML(textContent);
-
-            // Guardar como nuevo guion activo
-            const titleName = file.name.replace(/\.[^/.]+$/, ""); // quitar extensión
-            const newRef = db.collection(`users/${currentUser.uid}/scripts`);
-            const docRef = await newRef.add({
-                title: titleName,
-                content: htmlContent,
-                isArchived: false,
-                folderId: null,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            showToast('Archivo importado con éxito', 'success');
-            
-            // Abrirlo automáticamente
-            openScript(docRef.id, { title: titleName, content: htmlContent });
-
-        } catch (err) {
-            console.error(err);
-            showToast('Error al importar archivo', 'error');
-        } finally {
-            fileImport.value = ''; // resetear input
-            btnImport.innerHTML = '<i class="fa-solid fa-folder-open"></i> Abrir';
-            btnImport.disabled = false;
-        }
-    });
-}
-
-function parseTextToHTML(text) {
-    const lines = text.split('\n');
-    let html = '';
-    let lastType = null;
-    
-    lines.forEach(line => {
-        let trimmed = line.trim();
-        if(!trimmed) return;
-        
-        let type = 'action';
-        if(trimmed === trimmed.toUpperCase() && (trimmed.startsWith('INT.') || trimmed.startsWith('EXT.') || trimmed.startsWith('INT ') || trimmed.startsWith('EXT '))) {
-            type = 'slugline';
-        } else if (trimmed === trimmed.toUpperCase() && trimmed.length < 35 && !trimmed.includes(' - ')) {
-            type = 'character';
-        } else if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
-            type = 'parenthetical';
-        } else if (lastType === 'character' || lastType === 'parenthetical' || lastType === 'dialogue') {
-            type = 'dialogue';
-        } else {
-            type = 'action';
-        }
-        
-        html += `<div class="${type}">${trimmed}</div>`;
-        lastType = type;
-    });
-    
-    return html || '<div class="action"></div>';
 }

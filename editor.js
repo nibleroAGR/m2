@@ -1,5 +1,5 @@
-// Lógica del Editor de Guiones (Formatos y Atajos)
-const editor = document.getElementById('editor');
+// Lógica del Editor de Guiones (Formatos, Atajos y Paginación)
+const pagesContainer = document.getElementById('pages-container');
 const styles = ['slugline', 'action', 'character', 'parenthetical', 'dialogue', 'transition'];
 
 const flowMap = {
@@ -11,41 +11,49 @@ const flowMap = {
     'transition': 'slugline'
 };
 
-// Exponer la función globalmente para que funcione en el onclick del HTML
+// ==================== APLICAR ESTILO ====================
 window.applyStyle = function(className) {
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
 
     let container = selection.anchorNode;
     
-    // Buscamos el DIV hijo directo del editor
-    while (container && container.parentElement !== editor) {
+    // Buscamos el DIV hijo directo de una .page
+    while (container && (!container.parentElement || !container.parentElement.classList.contains('page'))) {
         container = container.parentElement;
+        if(!container) return; // Fuera del editor
     }
 
-    if (container && container !== editor) {
+    if (container && container.parentElement.classList.contains('page')) {
         container.className = className;
         updateActiveButton(className);
     }
-    
-    editor.focus();
 };
 
-// Lógica de Teclado
-editor.addEventListener('keydown', (e) => {
-    // Si el editor está deshabilitado (no hay guion abierto), ignorar
-    if(editor.contentEditable === "false") return;
+// ==================== ZOOM ====================
+const zoomSelect = document.getElementById('zoom-select');
+if(zoomSelect) {
+    zoomSelect.addEventListener('change', (e) => {
+        const val = e.target.value;
+        pagesContainer.style.transform = `scale(${val})`;
+    });
+}
+
+// ==================== LÓGICA DE TECLADO ====================
+pagesContainer.addEventListener('keydown', (e) => {
+    const page = e.target.closest('.page');
+    if (!page || page.contentEditable === "false") return;
 
     const selection = window.getSelection();
     let currentBlock = selection.anchorNode;
     
-    while (currentBlock && currentBlock.parentElement !== editor) {
+    while (currentBlock && currentBlock.parentElement !== page) {
         currentBlock = currentBlock.parentElement;
     }
 
-    if (!currentBlock || currentBlock === editor) return;
+    if (!currentBlock || currentBlock === page) return;
 
-    // ENTER: Nueva línea con lógica de flujo de guion
+    // ENTER: Nueva línea con lógica de flujo
     if (e.key === 'Enter') {
         e.preventDefault();
         const currentType = currentBlock.className || 'action';
@@ -62,6 +70,9 @@ editor.addEventListener('keydown', (e) => {
         selection.removeAllRanges();
         selection.addRange(range);
         updateActiveButton(nextType);
+        
+        // Forzar chequeo de paginación
+        checkPagination(page);
     }
 
     // TAB: Cambiar estilo cíclicamente
@@ -75,15 +86,99 @@ editor.addEventListener('keydown', (e) => {
     }
 });
 
-// Actualizar botones al hacer clic en el texto para saber en qué formato estamos
-editor.addEventListener('click', () => {
-    if(editor.contentEditable === "false") return;
-    
+// ==================== PAGINACIÓN (EL NÚCLEO) ====================
+pagesContainer.addEventListener('input', (e) => {
+    const page = e.target.closest('.page');
+    if(page) checkPagination(page);
+});
+
+// Función para guardar y restaurar el caret (básico)
+function saveCaret(node) {
+    const selection = window.getSelection();
+    if(selection.rangeCount === 0) return null;
+    return { node: selection.anchorNode, offset: selection.anchorOffset };
+}
+function restoreCaret(caretInfo) {
+    if(!caretInfo || !caretInfo.node) return;
+    try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.setStart(caretInfo.node, caretInfo.offset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    } catch(e) {}
+}
+
+window.reflowPagination = function(startPage) {
+    checkPagination(startPage);
+}
+
+function checkPagination(page) {
+    if(!page) return;
+    // 11in = 1056px @ 96dpi. Usamos 1056px como altura máxima real
+    const pageHeight = 1056;
+
+    // 1. DESBORDAMIENTO (Push down)
+    while (page.scrollHeight > pageHeight && page.lastElementChild && page.childElementCount > 1) {
+        let nextPage = page.nextElementSibling;
+        if (!nextPage) {
+            nextPage = document.createElement('div');
+            nextPage.className = 'page';
+            nextPage.contentEditable = true;
+            nextPage.spellcheck = false;
+            page.parentNode.insertBefore(nextPage, page.nextSibling);
+        }
+        
+        const lastChild = page.lastElementChild;
+        const caret = saveCaret(lastChild);
+        
+        nextPage.insertBefore(lastChild, nextPage.firstChild);
+        
+        restoreCaret(caret);
+        
+        if(nextPage.scrollHeight > pageHeight) {
+            checkPagination(nextPage);
+        }
+    }
+
+    // 2. REFLUJO HACIA ARRIBA (Pull up)
+    let nextPage = page.nextElementSibling;
+    if (nextPage) {
+        let firstChild = nextPage.firstElementChild;
+        if (firstChild && page.scrollHeight <= pageHeight - 20) { // Margen de seguridad
+            const caret = saveCaret(firstChild);
+            page.appendChild(firstChild);
+            
+            // Si al traerlo desborda, lo devolvemos
+            if (page.scrollHeight > pageHeight) {
+                page.removeChild(firstChild);
+                nextPage.insertBefore(firstChild, nextPage.firstChild);
+            } else {
+                restoreCaret(caret);
+                // Puede que haya espacio para traer más
+                checkPagination(page);
+                return; // el loop se encarga de todo
+            }
+        }
+        
+        // Eliminar página siguiente si quedó vacía
+        if (nextPage.childNodes.length === 0 || (nextPage.childNodes.length === 1 && nextPage.innerHTML === '<br>')) {
+            nextPage.remove();
+        }
+    }
+}
+
+// ==================== UI & ESTADÍSTICAS ====================
+pagesContainer.addEventListener('click', () => {
     setTimeout(() => {
         const selection = window.getSelection();
         let node = selection.anchorNode;
-        while (node && node.parentElement !== editor) node = node.parentElement;
-        if (node) updateActiveButton(node.className);
+        while (node && (!node.parentElement || !node.parentElement.classList.contains('page'))) {
+            node = node.parentElement;
+            if(!node) return;
+        }
+        if (node && node.className) updateActiveButton(node.className);
     }, 10);
 });
 
@@ -96,51 +191,33 @@ function updateActiveButton(className) {
     });
 }
 
-// ==================== ESTADÍSTICAS ====================
 function updateStats() {
-    if(editor.contentEditable === "false") {
+    const pages = document.querySelectorAll('.page');
+    if(pages.length > 0 && pages[0].contentEditable === "false") {
         document.getElementById('stat-pages').textContent = "0";
         document.getElementById('stat-scenes').textContent = "0";
         document.getElementById('stat-chars').textContent = "0";
         return;
     }
 
-    // 1. Escenas
-    const scenes = editor.querySelectorAll('.slugline').length;
+    const scenes = pagesContainer.querySelectorAll('.slugline').length;
     document.getElementById('stat-scenes').textContent = scenes;
 
-    // 2. Personajes
-    const charElements = editor.querySelectorAll('.character');
+    const charElements = pagesContainer.querySelectorAll('.character');
     const uniqueChars = new Set();
     charElements.forEach(el => {
         let name = el.textContent.trim().toUpperCase();
-        // Limpiar " (CONT'D)" o " (V.O.)" para agrupar el mismo personaje
         name = name.replace(/\s*\(.*?\)/g, '').trim();
         if (name) uniqueChars.add(name);
     });
     document.getElementById('stat-chars').textContent = uniqueChars.size;
 
-    // 3. Páginas
-    // Altura de una hoja US Letter en CSS es 11 pulgadas = 11 * 96px = 1056px.
-    // Usaremos scrollHeight para calcular cuántas páginas abarca el texto.
-    const pageHeight = 1056; 
-    let pages = Math.max(1, Math.ceil(editor.scrollHeight / pageHeight));
-    
-    document.getElementById('stat-pages').textContent = pages;
+    document.getElementById('stat-pages').textContent = pages.length;
 }
 
-// Observar cambios en el contenido del editor para actualizar estadísticas en tiempo real
+window.updateStats = updateStats;
+
 const observer = new MutationObserver(() => {
-    // Usamos setTimeout o un debounce simple si queremos mejor rendimiento,
-    // pero para un editor de texto suele ser lo suficientemente rápido.
     updateStats();
 });
-
-observer.observe(editor, {
-    childList: true,
-    subtree: true,
-    characterData: true
-});
-
-// Exponer globalmente para poder llamarla desde app.js al cargar un guion
-window.updateStats = updateStats;
+observer.observe(pagesContainer, { childList: true, subtree: true, characterData: true });

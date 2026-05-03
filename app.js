@@ -31,6 +31,9 @@ const scriptTitleEl = document.getElementById('script-title');
 const btnSave = document.getElementById('btn-save');
 const btnExportPdf = document.getElementById('btn-export-pdf');
 const saveStatus = document.getElementById('save-status');
+const btnBackup = document.getElementById('btn-backup');
+const btnImport = document.getElementById('btn-import');
+const fileImport = document.getElementById('file-import');
 
 // ==================== AUTHENTICATION ====================
 auth.onAuthStateChanged((user) => {
@@ -404,6 +407,7 @@ function openScript(id, data) {
     scriptTitleEl.disabled = false;
     btnSave.disabled = false;
     btnExportPdf.disabled = false;
+    if(btnBackup) btnBackup.disabled = false;
     
     // Resaltar el activo en la lista
     document.querySelectorAll('.script-item').forEach(item => item.classList.remove('active'));
@@ -425,6 +429,7 @@ function resetEditor() {
     scriptTitleEl.disabled = true;
     btnSave.disabled = true;
     btnExportPdf.disabled = true;
+    if(btnBackup) btnBackup.disabled = true;
     stopAutoSave();
     if(window.updateStats) window.updateStats();
 }
@@ -543,4 +548,127 @@ function showToast(message, type = 'info') {
         toast.classList.add('fade-out');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// ==================== RESPALDAR (COPIA DE SEGURIDAD) ====================
+if(btnBackup) {
+    btnBackup.addEventListener('click', async () => {
+        if(!currentScriptId || !currentUser) return;
+        const content = editorEl.innerHTML;
+        const title = scriptTitleEl.value || 'Sin Título';
+        
+        try {
+            const newRef = db.collection(`users/${currentUser.uid}/scripts`);
+            await newRef.add({
+                title: `${title} (Respaldo)`,
+                content: content,
+                isArchived: true,
+                folderId: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            showToast('Copia de seguridad creada en el archivo', 'success');
+        } catch(e) {
+            console.error(e);
+            showToast('Error al crear copia', 'error');
+        }
+    });
+}
+
+// ==================== IMPORTAR (ABRIR) ====================
+if(btnImport && fileImport) {
+    btnImport.addEventListener('click', () => {
+        fileImport.click();
+    });
+
+    fileImport.addEventListener('change', async (e) => {
+        if(!currentUser) return;
+        const file = e.target.files[0];
+        if(!file) return;
+
+        btnImport.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando...';
+        btnImport.disabled = true;
+
+        try {
+            let textContent = '';
+            if(file.name.toLowerCase().endsWith('.pdf')) {
+                // Leer PDF
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                for(let i=1; i<=pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContentObj = await page.getTextContent();
+                    let lastY = -1;
+                    for(let item of textContentObj.items) {
+                        if(lastY !== item.transform[5] && lastY !== -1) {
+                            textContent += '\n'; // salto de línea si cambia la Y
+                        }
+                        textContent += item.str;
+                        lastY = item.transform[5];
+                    }
+                    textContent += '\n\n';
+                }
+            } else {
+                // Leer TXT o Fountain
+                textContent = await file.text();
+            }
+
+            // Formateo Heurístico a HTML
+            const htmlContent = parseTextToHTML(textContent);
+
+            // Guardar como nuevo guion activo
+            const titleName = file.name.replace(/\.[^/.]+$/, ""); // quitar extensión
+            const newRef = db.collection(`users/${currentUser.uid}/scripts`);
+            const docRef = await newRef.add({
+                title: titleName,
+                content: htmlContent,
+                isArchived: false,
+                folderId: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            showToast('Archivo importado con éxito', 'success');
+            
+            // Abrirlo automáticamente
+            openScript(docRef.id, { title: titleName, content: htmlContent });
+
+        } catch (err) {
+            console.error(err);
+            showToast('Error al importar archivo', 'error');
+        } finally {
+            fileImport.value = ''; // resetear input
+            btnImport.innerHTML = '<i class="fa-solid fa-folder-open"></i> Abrir';
+            btnImport.disabled = false;
+        }
+    });
+}
+
+function parseTextToHTML(text) {
+    const lines = text.split('\n');
+    let html = '';
+    let lastType = null;
+    
+    lines.forEach(line => {
+        let trimmed = line.trim();
+        if(!trimmed) return;
+        
+        let type = 'action';
+        if(trimmed === trimmed.toUpperCase() && (trimmed.startsWith('INT.') || trimmed.startsWith('EXT.') || trimmed.startsWith('INT ') || trimmed.startsWith('EXT '))) {
+            type = 'slugline';
+        } else if (trimmed === trimmed.toUpperCase() && trimmed.length < 35 && !trimmed.includes(' - ')) {
+            type = 'character';
+        } else if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+            type = 'parenthetical';
+        } else if (lastType === 'character' || lastType === 'parenthetical' || lastType === 'dialogue') {
+            type = 'dialogue';
+        } else {
+            type = 'action';
+        }
+        
+        html += `<div class="${type}">${trimmed}</div>`;
+        lastType = type;
+    });
+    
+    return html || '<div class="action"></div>';
 }

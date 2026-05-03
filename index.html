@@ -19,6 +19,12 @@
     <!-- Lógica del Editor de texto (Normal) -->
     <script src="editor.js" defer></script>
     
+    <!-- Librería para extraer texto de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
     <!-- Librería para exportar a PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -83,6 +89,12 @@
                 <input type="text" id="script-title" class="title-input" placeholder="Selecciona un guion para empezar..." disabled>
                 <div class="editor-actions">
                     <span id="save-status" class="text-muted text-sm"><i class="fa-solid fa-cloud"></i> Autoguardado 10min</span>
+                    
+                    <input type="file" id="file-import" accept=".pdf,.txt" style="display:none;">
+                    <button id="btn-import" class="btn btn-secondary btn-sm" title="Abrir guion"><i class="fa-solid fa-folder-open"></i> Abrir</button>
+                    
+                    <button id="btn-backup" class="btn btn-secondary btn-sm" disabled title="Hacer Copia de Seguridad"><i class="fa-solid fa-copy"></i> Respaldar</button>
+                    
                     <button id="btn-save" class="btn btn-primary btn-sm" disabled><i class="fa-solid fa-floppy-disk"></i> Guardar</button>
                     <button id="btn-export-pdf" class="btn btn-success btn-sm" disabled><i class="fa-solid fa-file-pdf"></i> Exportar PDF</button>
                 </div>

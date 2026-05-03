@@ -171,6 +171,8 @@ function createScriptElement(script) {
     return div;
 }
 
+let activeFolderCtxId = null;
+
 function createFolderElement(folder) {
     const div = document.createElement('div');
     div.className = 'folder-item';
@@ -182,26 +184,43 @@ function createFolderElement(folder) {
                 <i class="fa-solid fa-folder"></i> 
                 <span>${folder.name}</span>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <i class="fa-solid fa-trash btn-delete-folder" style="font-size:0.75rem; color:#ef4444;" title="Borrar carpeta"></i>
-                <i class="fa-solid fa-chevron-down" style="font-size:0.7rem; color:#94a3b8;"></i>
-            </div>
+            <i class="fa-solid fa-chevron-down" style="font-size:0.7rem; color:#94a3b8;"></i>
         </div>
         <div class="folder-content" id="folder-content-${folder.id}"></div>
     `;
 
-    // Borrar carpeta
-    div.querySelector('.btn-delete-folder').addEventListener('click', async (e) => {
+    const header = div.querySelector('.folder-header');
+    let longPressTimer;
+
+    function showContextMenu(e) {
+        e.preventDefault();
         e.stopPropagation();
-        if(confirm('¿Eliminar esta carpeta de seguridad y todas las copias en su interior? No se puede deshacer.')) {
-            const scriptsInFolder = allScripts.filter(s => s.folderId === folder.id);
-            for(let s of scriptsInFolder) {
-                await db.doc(`users/${currentUser.uid}/scripts/${s.id}`).delete();
-            }
-            await db.doc(`users/${currentUser.uid}/folders/${folder.id}`).delete();
-            showToast('Carpeta de seguridad eliminada', 'info');
+        activeFolderCtxId = folder.id;
+        const ctxMenu = document.getElementById('folder-context-menu');
+        
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
         }
-    });
+        
+        ctxMenu.style.left = `${clientX}px`;
+        ctxMenu.style.top = `${clientY}px`;
+        ctxMenu.classList.remove('hidden');
+    }
+
+    // Click derecho
+    header.addEventListener('contextmenu', showContextMenu);
+
+    // Pulsación larga (pantallas táctiles)
+    header.addEventListener('touchstart', (e) => {
+        longPressTimer = setTimeout(() => showContextMenu(e), 600);
+    }, {passive: false}); // passive false para permitir event.preventDefault() si hace falta
+    
+    header.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    header.addEventListener('touchmove', () => clearTimeout(longPressTimer));
 
     // Dropzone logic
     div.addEventListener('dragover', (e) => {
@@ -241,8 +260,47 @@ function createFolderElement(folder) {
     return div;
 }
 
-// Event Listeners globales para Dropzones raíz
+// Event Listeners globales para Dropzones raíz y Context Menu
 document.addEventListener('DOMContentLoaded', () => {
+    // Context Menu Logic
+    const ctxMenu = document.getElementById('folder-context-menu');
+    const ctxRename = document.getElementById('ctx-rename');
+    const ctxDelete = document.getElementById('ctx-delete');
+
+    if(ctxMenu) {
+        document.addEventListener('click', (e) => {
+            if(!e.target.closest('#folder-context-menu')) {
+                ctxMenu.classList.add('hidden');
+                activeFolderCtxId = null;
+            }
+        });
+
+        ctxRename.addEventListener('click', async () => {
+            if(!activeFolderCtxId || !currentUser) return;
+            const newName = prompt('Nuevo nombre de la carpeta:');
+            if(newName) {
+                await db.doc(`users/${currentUser.uid}/folders/${activeFolderCtxId}`).update({
+                    name: newName,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            ctxMenu.classList.add('hidden');
+        });
+
+        ctxDelete.addEventListener('click', async () => {
+            if(!activeFolderCtxId || !currentUser) return;
+            if(confirm('¿Eliminar esta carpeta de seguridad y todas las copias en su interior? No se puede deshacer.')) {
+                const scriptsInFolder = allScripts.filter(s => s.folderId === activeFolderCtxId);
+                for(let s of scriptsInFolder) {
+                    await db.doc(`users/${currentUser.uid}/scripts/${s.id}`).delete();
+                }
+                await db.doc(`users/${currentUser.uid}/folders/${activeFolderCtxId}`).delete();
+                showToast('Carpeta eliminada', 'info');
+            }
+            ctxMenu.classList.add('hidden');
+        });
+    }
+
     // Zona de Guiones Activos (Restaurar / Copiar desde Archivo)
     const scriptListElDrop = document.getElementById('script-list');
     if(scriptListElDrop) {

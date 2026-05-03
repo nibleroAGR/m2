@@ -224,6 +224,21 @@ kbd { background: #333; padding: 2px 6px; border-radius: 4px; font-family: sans-
 .script-item[draggable="true"] { cursor: grab; }
 .script-item[draggable="true"]:active { cursor: grabbing; }
 
+/* Context Menu */
+.context-menu {
+    position: fixed; background: var(--bg-secondary); border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-radius: 8px; padding: 5px; z-index: 10000; min-width: 150px;
+}
+.context-menu.hidden { display: none; }
+.ctx-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px;
+    background: transparent; border: none; color: var(--text-primary); text-align: left;
+    cursor: pointer; border-radius: 4px; font-size: 0.9rem; transition: var(--transition);
+}
+.ctx-item:hover { background: rgba(255,255,255,0.05); }
+.ctx-item.delete { color: #ef4444; }
+.ctx-item.delete:hover { background: rgba(239, 68, 68, 0.1); }
+
 /* Sidebar Derecho (Estadísticas) */
 #right-sidebar {
     width: 240px; background: var(--bg-secondary); color: var(--text-primary);

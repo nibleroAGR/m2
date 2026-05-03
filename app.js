@@ -405,7 +405,7 @@ function openScript(id, data) {
     firstPage.contentEditable = true;
     firstPage.spellcheck = false;
     firstPage.id = 'editor';
-    firstPage.innerHTML = data.content || '';
+    firstPage.innerHTML = data.content || '<div class="action"><br></div>';
     pagesContainer.appendChild(firstPage);
     
     if(window.reflowPagination) {

@@ -18,6 +18,11 @@ window.applyStyle = function(className) {
 
     let container = selection.anchorNode;
     
+    // Si selection está en el page (espacio vacío)
+    if (container.nodeType === 1 && container.classList.contains('page')) {
+        container = container.childNodes[selection.anchorOffset] || container.lastElementChild;
+    }
+
     // Buscamos el DIV hijo directo de una .page
     while (container && (!container.parentElement || !container.parentElement.classList.contains('page'))) {
         container = container.parentElement;
@@ -27,6 +32,7 @@ window.applyStyle = function(className) {
     if (container && container.parentElement.classList.contains('page')) {
         container.className = className;
         updateActiveButton(className);
+        container.parentElement.focus(); // Devolver foco a la página
     }
 };
 
@@ -47,6 +53,10 @@ pagesContainer.addEventListener('keydown', (e) => {
     const selection = window.getSelection();
     let currentBlock = selection.anchorNode;
     
+    if (currentBlock.nodeType === 1 && currentBlock.classList.contains('page')) {
+        currentBlock = currentBlock.childNodes[selection.anchorOffset] || currentBlock.lastElementChild;
+    }
+
     while (currentBlock && currentBlock.parentElement !== page) {
         currentBlock = currentBlock.parentElement;
     }
@@ -174,6 +184,11 @@ pagesContainer.addEventListener('click', () => {
     setTimeout(() => {
         const selection = window.getSelection();
         let node = selection.anchorNode;
+        
+        if (node && node.nodeType === 1 && node.classList.contains('page')) {
+            node = node.childNodes[selection.anchorOffset] || node.lastElementChild;
+        }
+
         while (node && (!node.parentElement || !node.parentElement.classList.contains('page'))) {
             node = node.parentElement;
             if(!node) return;

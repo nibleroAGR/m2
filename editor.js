@@ -11,28 +11,46 @@ const flowMap = {
     'transition': 'slugline'
 };
 
-// ==================== APLICAR ESTILO ====================
-window.applyStyle = function(className) {
+// Variable global que rastrea exactamente en qué bloque de texto está el usuario
+let currentFocusBlock = null;
+
+// ==================== RASTREO DEL CURSOR (A PRUEBA DE FALLOS) ====================
+document.addEventListener('selectionchange', () => {
     const selection = window.getSelection();
-    if (!selection.rangeCount) return;
+    if (!selection || !selection.rangeCount) return;
 
-    let container = selection.anchorNode;
+    let node = selection.anchorNode;
     
-    // Si selection está en el page (espacio vacío)
-    if (container.nodeType === 1 && container.classList.contains('page')) {
-        container = container.childNodes[selection.anchorOffset] || container.lastElementChild;
+    // Si el usuario hace clic en un espacio vacío de la página
+    if (node && node.nodeType === 1 && node.classList && node.classList.contains('page')) {
+        node = node.childNodes[selection.anchorOffset] || node.lastElementChild;
     }
 
-    // Buscamos el DIV hijo directo de una .page
-    while (container && (!container.parentElement || !container.parentElement.classList.contains('page'))) {
-        container = container.parentElement;
-        if(!container) return; // Fuera del editor
+    // Subimos por el árbol DOM hasta encontrar el div que contiene el formato (hijo directo de .page)
+    while (node && node !== pagesContainer) {
+        if (node.parentElement && node.parentElement.classList && node.parentElement.classList.contains('page')) {
+            currentFocusBlock = node;
+            updateActiveButton(node.className);
+            return;
+        }
+        node = node.parentElement;
     }
+});
 
-    if (container && container.parentElement.classList.contains('page')) {
-        container.className = className;
+function updateActiveButton(className) {
+    document.querySelectorAll('.btn-style').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-type') === className) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// ==================== APLICAR ESTILO (BOTONES) ====================
+window.applyStyle = function(className) {
+    if (currentFocusBlock) {
+        currentFocusBlock.className = className;
         updateActiveButton(className);
-        container.parentElement.focus(); // Devolver foco a la página
     }
 };
 
@@ -47,52 +65,48 @@ if(zoomSelect) {
 
 // ==================== LÓGICA DE TECLADO ====================
 pagesContainer.addEventListener('keydown', (e) => {
-    const page = e.target.closest('.page');
+    if (!currentFocusBlock) return;
+
+    const page = currentFocusBlock.closest('.page');
     if (!page || page.contentEditable === "false") return;
 
-    const selection = window.getSelection();
-    let currentBlock = selection.anchorNode;
-    
-    if (currentBlock.nodeType === 1 && currentBlock.classList.contains('page')) {
-        currentBlock = currentBlock.childNodes[selection.anchorOffset] || currentBlock.lastElementChild;
+    // TAB: Cambiar estilo cíclicamente
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const currentType = currentFocusBlock.className || 'action';
+        const nextIndex = (styles.indexOf(currentType) + 1) % styles.length;
+        const nextType = styles[nextIndex];
+        currentFocusBlock.className = nextType;
+        updateActiveButton(nextType);
+        return;
     }
-
-    while (currentBlock && currentBlock.parentElement !== page) {
-        currentBlock = currentBlock.parentElement;
-    }
-
-    if (!currentBlock || currentBlock === page) return;
 
     // ENTER: Nueva línea con lógica de flujo
     if (e.key === 'Enter') {
         e.preventDefault();
-        const currentType = currentBlock.className || 'action';
+        const currentType = currentFocusBlock.className || 'action';
         const nextType = flowMap[currentType] || 'action';
 
         const newBlock = document.createElement('div');
         newBlock.className = nextType;
         newBlock.innerHTML = '<br>';
-        currentBlock.after(newBlock);
+        
+        // Insertar después del bloque actual
+        currentFocusBlock.after(newBlock);
 
+        // Mover el cursor al nuevo bloque
+        const selection = window.getSelection();
         const range = document.createRange();
         range.setStart(newBlock, 0);
         range.collapse(true);
         selection.removeAllRanges();
         selection.addRange(range);
+        
         updateActiveButton(nextType);
+        currentFocusBlock = newBlock; // Actualizar referencia local inmediatamente
         
         // Forzar chequeo de paginación
         checkPagination(page);
-    }
-
-    // TAB: Cambiar estilo cíclicamente
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        const currentType = currentBlock.className || 'action';
-        const nextIndex = (styles.indexOf(currentType) + 1) % styles.length;
-        const nextType = styles[nextIndex];
-        currentBlock.className = nextType;
-        updateActiveButton(nextType);
     }
 });
 
@@ -102,8 +116,8 @@ pagesContainer.addEventListener('input', (e) => {
     if(page) checkPagination(page);
 });
 
-// Función para guardar y restaurar el caret (básico)
-function saveCaret(node) {
+// Función para guardar y restaurar el caret
+function saveCaret() {
     const selection = window.getSelection();
     if(selection.rangeCount === 0) return null;
     return { node: selection.anchorNode, offset: selection.anchorOffset };
@@ -126,7 +140,7 @@ window.reflowPagination = function(startPage) {
 
 function checkPagination(page) {
     if(!page) return;
-    // 11in = 1056px @ 96dpi. Usamos 1056px como altura máxima real
+    // 11in = 1056px @ 96dpi.
     const pageHeight = 1056;
 
     // 1. DESBORDAMIENTO (Push down)
@@ -141,7 +155,7 @@ function checkPagination(page) {
         }
         
         const lastChild = page.lastElementChild;
-        const caret = saveCaret(lastChild);
+        const caret = saveCaret();
         
         nextPage.insertBefore(lastChild, nextPage.firstChild);
         
@@ -156,8 +170,8 @@ function checkPagination(page) {
     let nextPage = page.nextElementSibling;
     if (nextPage) {
         let firstChild = nextPage.firstElementChild;
-        if (firstChild && page.scrollHeight <= pageHeight - 20) { // Margen de seguridad
-            const caret = saveCaret(firstChild);
+        if (firstChild && page.scrollHeight <= pageHeight - 20) {
+            const caret = saveCaret();
             page.appendChild(firstChild);
             
             // Si al traerlo desborda, lo devolvemos
@@ -166,9 +180,8 @@ function checkPagination(page) {
                 nextPage.insertBefore(firstChild, nextPage.firstChild);
             } else {
                 restoreCaret(caret);
-                // Puede que haya espacio para traer más
                 checkPagination(page);
-                return; // el loop se encarga de todo
+                return;
             }
         }
         
@@ -179,33 +192,7 @@ function checkPagination(page) {
     }
 }
 
-// ==================== UI & ESTADÍSTICAS ====================
-pagesContainer.addEventListener('click', () => {
-    setTimeout(() => {
-        const selection = window.getSelection();
-        let node = selection.anchorNode;
-        
-        if (node && node.nodeType === 1 && node.classList.contains('page')) {
-            node = node.childNodes[selection.anchorOffset] || node.lastElementChild;
-        }
-
-        while (node && (!node.parentElement || !node.parentElement.classList.contains('page'))) {
-            node = node.parentElement;
-            if(!node) return;
-        }
-        if (node && node.className) updateActiveButton(node.className);
-    }, 10);
-});
-
-function updateActiveButton(className) {
-    document.querySelectorAll('.btn-style').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-type') === className) {
-            btn.classList.add('active');
-        }
-    });
-}
-
+// ==================== ESTADÍSTICAS ====================
 function updateStats() {
     const pages = document.querySelectorAll('.page');
     if(pages.length > 0 && pages[0].contentEditable === "false") {
